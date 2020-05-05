@@ -1,8 +1,12 @@
 %define FILENAME_SIZE   255
 %define FILE_SIZE       65536
 %define STACK_SIZE      65536
-;65536
 
+
+
+; ===========================================================================
+; ===========================================================================
+; ===========================================================================
 section .data
 noinputmsg:     db      'No input file given...', 10         ; input msg error
 noinputlen      equ     $ - noinputmsg
@@ -13,15 +17,25 @@ copyerrormsglen equ     $ - copyerrormsg
 errormsg:       db      'Error at runtime...', 10
 errormsglen     equ     $ - errormsg
 
-trymsg:         db      'Working...', 10
+trymsg:         db      'Working...', 10                    ; because of debug reasons x)
 trymsglen       equ     $ - trymsg
 
+
+
+; ===========================================================================
+; ===========================================================================
+; ===========================================================================
 section .bss
 filename:       resb    FILENAME_SIZE
 filebuffer:     resb    FILE_SIZE           ; buffer for the file content
 fd_input:       resb    4
 filesize:       resb    4
 
+
+
+; ===========================================================================
+; ===========================================================================
+; ===========================================================================
 section .text
 global _start               ; for the linker
 
@@ -35,7 +49,8 @@ print:              ; print : esi = char*, edx = size_t
     ret                 ; return from procedure
     
     
-print_number:           ; number in eax
+; ===========================================================================
+print_number:           ; print the number stored eax (because of debug...)
     pusha               ; save registers
     push ebp
     mov ebp, esp        ; new frame
@@ -63,7 +78,7 @@ print_number:           ; number in eax
     ret
     
     
-
+; ===========================================================================
 readfile:               ; readfile : esi = char*
 .openfile:                  ; open the file
     pusha                   ; save registers state
@@ -92,12 +107,13 @@ readfile:               ; readfile : esi = char*
     ret
     
     
+; ===========================================================================
 error:              ; error msg in esi, size in edx
     call print
     ret
     
 
-    
+; ===========================================================================
 _start:             ; main procedure
     push ebp
     mov ebp, esp
@@ -144,7 +160,7 @@ _start:             ; main procedure
     int	0x80              ;call kernel
     
     
-    
+; ===========================================================================
 interpreter:                ; our real interpreter, since the code is loaded into memory...
     push ebp
     mov ebp, esp            ; create a new frame
@@ -156,23 +172,9 @@ interpreter:                ; our real interpreter, since the code is loaded int
     
 .L1:                ; the main loop
     lodsb                   ; load the instruction
-    test al, al
+    test al, al             ; if al is zero, we reached the end
     jz .end
-    
-    ;push eax
-    ;mov eax, edi
-    ;sub eax, edx
-    ;call print_number
-    ;pop eax
-    
-    ;push edx
-    ;dec esi
-    ;mov edx, 1
-    ;call print
-    ;inc esi
-    ;pop edx
-    
-    cmp al, '>'
+    cmp al, '>'             ; all operators...
     je .incSP
     cmp al, '<'
     je .decSP
@@ -190,63 +192,36 @@ interpreter:                ; our real interpreter, since the code is loaded int
     
 .incSP:             ; increment the bf stack pointer
     inc edi
-    
-    ;push esi
-    ;push edx
-    ;mov esi, trymsg
-    ;mov edx, trymsglen
-    ;call print
-    ;pop edx
-    ;pop esi
-    
     cmp edi, ebp            ; case the bf sp is more than the stack size
     je .error
     jmp .finally
 .decSP:             ; decrement the bf stack pointer
-
-    ;push esi
-    ;push edx
-    ;mov esi, trymsg
-    ;mov edx, trymsglen
-    ;call print
-    ;pop edx
-    ;pop esi
-
     dec edi
     cmp edi, edx            ; case the bf sp is less than 0
     jl .error
     jmp .finally
     
-.incMem:
+.incMem:            ; increment byte pointed by edi
     inc byte[edi]
     jmp .finally
-.decMem:
+.decMem:            ; decrement byte pointed by edi
     dec byte[edi]
     jmp .finally
     
-.output:
-    push esi
+.output:            ; show a byt of data
+    push esi        ; save esi and edx : there are importants
     push edx
     mov esi, edi
     mov edx, 1
-    call print
+    call print      ; simply print one char to screen
     pop edx
-    pop esi
+    pop esi         ; restore our registers
     jmp .finally
     
-.makeLoop:
+.makeLoop:              ; go to next ] if byte at edi is 0
     cmp byte[edi], 0            ; if mem at edi is 0, then goto next ]
     je .nextLoop
     push esi                    ; else, we push the 'return' adress
-    
-    ;push esi
-    ;push edx
-    ;mov esi, trymsg
-    ;mov edx, trymsglen
-    ;call print
-    ;pop edx
-    ;pop esi
-    
     jmp .L2end                  ; jump to the end
 .nextLoop:
     mov ecx, 1                  ; put ecx at 1
@@ -271,19 +246,18 @@ interpreter:                ; our real interpreter, since the code is loaded int
 .L2end:
     jmp .finally
     
-.endLoop:
+.endLoop:               ; jump at previous [ if byte at edi is non zero
     cmp byte[edi], 0
     je .iszero
-    pop esi
-    push esi
+    mov esi, dword[esp]     ; we stored the 'return adress' of previous [, so simply move our instruction pointer to it
     jmp .finally
 .iszero:
-    add esp, 4
+    add esp, 4              ; here, we need to pop off the stack the adress of previous [, because we don't use it anymore
     jmp .finally
     
 .finally:
     jmp .L1
-.error:
+.error:             ; in case of error, disaply an error msg
     mov esi, errormsg
     mov edx, errormsglen
     call print
