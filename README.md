@@ -1,12 +1,11 @@
 # brainfuck-interpreter-ASM
 
-This is a brainfuck interpreter written in Assembly, namely NASM assembler and x86 architecture.
+This is a brainfuck interpreter written in Assembly, namely NASM assembler for x86 architecture. It targets Linux-based OS, since it uses directly the Linux system calls.
 
-<h3>Compilation</h3>
-<p>To compile the interpreter, you should run 'build.sh' script.</p>
+### Compilation
+To compile the interpreter, you must the `build.sh` script. The compilation's output is put inside the `build` directory, under the name `brainfuck`.
 
-<h3>Use</h3>
-<p>You must give a file path containing your brainfuck code.</p>
-<p>Example of use :</br>
-  ./brainfuck code1.bf
-</p>
+### Use
+The interpreter needs to be given a path to a brainfuck program. The file size is limited to 2^16 (65536) chars only, so be careful !
+
+Example of use : `./build/brainfuck code.bf`
