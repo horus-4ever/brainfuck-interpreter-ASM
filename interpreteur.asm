@@ -20,6 +20,9 @@ errormsglen     equ     $ - errormsg
 trymsg:         db      'Working...', 10                    ; because of debug reasons x)
 trymsglen       equ     $ - trymsg
 
+inputmsg:       db      10, 'Input (only one char) : '                          ; ask for an input
+inputmsglen     equ     $ - inputmsg
+
 
 
 ; ===========================================================================
@@ -30,6 +33,7 @@ filename:       resb    FILENAME_SIZE
 filebuffer:     resb    FILE_SIZE           ; buffer for the file content
 fd_input:       resb    4
 filesize:       resb    4
+userinput:      resb    4
 
 
 
@@ -77,6 +81,38 @@ print_number:           ; print the number stored eax (because of debug...)
     popa
     ret
     
+    
+; ===========================================================================
+input:              ; take an input from the user
+    pusha
+    mov eax, 3              ; sys_read
+    mov ebx, 2              ; stdin
+    mov ecx, userinput      ; char* destination
+    mov edx, 1              ; one char
+    int 0x80
+    mov al, byte[userinput] ; get the char
+    mov byte[edi], al       ; put the char to byte pointed by edi
+    call flushstdin         ; flush the stdin
+    popa
+    ret
+    
+
+; ===========================================================================
+flushstdin:
+    push 0                  ; location char*
+.loopy:
+    mov eax, 3              ; sys_read
+    mov ebx, 2              ; stdin
+    mov ecx, esp            ; where to put the msg
+    mov edx, 1              ; only need one char
+    cmp byte[esp], 10
+    je .end
+    int 0x80
+    jmp .loopy
+.end:
+    add esp, 4
+    ret
+
     
 ; ===========================================================================
 readfile:               ; readfile : esi = char*
@@ -184,6 +220,8 @@ interpreter:                ; our real interpreter, since the code is loaded int
     je .decMem
     cmp al, '.'
     je .output
+    cmp al, ','
+    je .askinput
     cmp al, '['
     je .makeLoop
     cmp al, ']'
@@ -216,6 +254,16 @@ interpreter:                ; our real interpreter, since the code is loaded int
     call print      ; simply print one char to screen
     pop edx
     pop esi         ; restore our registers
+    jmp .finally
+.askinput:
+    push esi
+    push edx
+    mov esi, inputmsg
+    mov edx, inputmsglen
+    call print
+    pop edx
+    pop esi
+    call input
     jmp .finally
     
 .makeLoop:              ; go to next ] if byte at edi is 0
