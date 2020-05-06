@@ -3,7 +3,6 @@
 %define STACK_SIZE      65536
 
 
-
 ; ===========================================================================
 ; ===========================================================================
 ; ===========================================================================
@@ -150,6 +149,20 @@ error:              ; error msg in esi, size in edx
     
 
 ; ===========================================================================
+initstack:              ; initialise the stakc with zeros
+    lea edi, [esp+4]            ; be careful with our return adress
+    xor eax, eax                ; set eax to 0 => stdosd
+.loopy:
+    cmp edi, ebp                ; if edi == ebp, it's the end
+    je .end
+    stosd                       ; else, we store at edi a 32bits 0
+    jmp .loopy                  ; jump back to the loop
+.end:
+    ret
+    
+    
+    
+; ===========================================================================
 _start:             ; main procedure
     push ebp
     mov ebp, esp
@@ -201,7 +214,8 @@ interpreter:                ; our real interpreter, since the code is loaded int
     push ebp
     mov ebp, esp            ; create a new frame
     
-    sub esp, STACK_SIZE     ; create the stack for our bf compiler
+    sub esp, STACK_SIZE     ; create our bf stack
+    call initstack          ; intialise this stack with 0, to avoid garbage values
     mov edi, esp            ; edi is the bf stack pointer
     mov edx, esp            ; stack may change...
     mov esi, filebuffer     ; the code to interpreter
